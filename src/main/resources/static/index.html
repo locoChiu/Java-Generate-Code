@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>代码生成工具</title>
+    <!-- 引入样式 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <!-- 引入组件库 -->
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <!--数据库连接信息start-->
+        <table>
+            <tr>
+                <td>
+                    <el-tag size="mini">数据库用户名</el-tag>
+                </td>
+                <td>
+                    <el-input size="mini" v-model="db.username"></el-input>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <el-tag size="mini">数据库密码</el-tag>
+                </td>
+                <td>
+                    <el-input size="mini" v-model="db.password"></el-input>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <el-tag size="mini">数据库连接地址</el-tag>
+                </td>
+                <td>
+                    <el-input size="mini" v-model="db.url">
+                        <template slot="prepend">{{dbPre}}</template>
+                        <template slot="append">{{dbApe}}</template>
+                    </el-input>
+                </td>
+            </tr>
+        </table>
+        <!--数据库连接信息end-->
+
+        <!--数据库连接按钮start-->
+        <div style="display: flex">
+            <el-button size="mini" type="primary" @click="connect" :disabled="!connectBtnEnabled">连接数据库</el-button>
+            <div style="color: #ff0114;font-weight: bold">*{{msg}}*</div>
+            <el-input v-model="packageName" style="width:300px" size="mini"></el-input>
+            <el-button type="primary" size="mini" @click="config">配置</el-button>
+        </div>
+        <!--数据库连接按钮end-->
+
+        <!--配置表信息显示start-->
+        <el-table :data="tableData" border stripe style="width: 100%">
+            <el-table-column prop="tableName" label="表名称" width="180">
+            </el-table-column>
+            <el-table-column label="实体类名称" width="180">
+                <template slot-scope="scope">
+                    <el-input v-model="scope.row.modelName"></el-input>
+                </template>
+            </el-table-column>
+            <el-table-column label="Mapper名称" width="180">
+                <template slot-scope="scope">
+                    <el-input v-model="scope.row.mapperName"></el-input>
+                </template>
+            </el-table-column>
+            <el-table-column label="Service名称" width="180">
+                <template slot-scope="scope">
+                    <el-input v-model="scope.row.serviceName"></el-input>
+                </template>
+            </el-table-column>
+            <el-table-column label="Controller名称" width="180">
+                <template slot-scope="scope">
+                    <el-input v-model="scope.row.controllerName"></el-input>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!--配置表信息显示end-->
+
+        <!--生成代码start-->
+        <div>
+            <el-button @click="generateCode" type="success">生成代码</el-button>
+            <div style="color: #ff0114;font-weight: bold">*{{result}}*</div>
+            <div>{{codePath}}</div>
+        </div>
+        <!--生成代码end-->
+
+    </div>
+</body>
+
+<script>
+    new Vue({
+        el:"#app",
+        data:function () {
+            return {
+                result:"",  // 生成代码结果
+                codePath:"",    // 代码生成路径
+                tableData:[],   // 配置信息表
+                packageName:"org.azim.test",    // 生成包名
+                connectBtnEnabled:true, // 连接数据库按钮禁用
+                msg:"数据库未连接",   // 数据库连接信息显示
+                dbPre:"jdbc:mysql://",  // 数据库连接url前缀
+                dbApe:"?useUnicode=true&characterEncoding=UTF-8&serverTimeZone=Asia/Shanghai",  // 数据库连接url后缀
+                db:{    // 数据库连接信息
+                    username:"root",
+                    password:"root",
+                    url:"localhost:3306/vmall"
+                }
+            }
+        },
+        methods:{
+            // 生成代码
+            generateCode() {
+                let _this = this;
+                axios.post('/generate', this.tableData)
+                    .then(function (response) {
+                        _this.result = response.data.msg;
+                        _this.codePath = response.data.obj;
+                    })
+                    .catch(function (error) {
+                    });
+            },
+            // 配置
+            config(){
+                let _this = this;
+                axios.post("/config",{packageName: this.packageName}).then(res=>{
+                    _this.msg = res.data.msg;
+                    _this.tableData = res.data.obj;
+                }).catch(err=>{
+                    _this.msg = res.data.msg;
+                })
+            },
+            // 连接数据库
+            connect(){
+                let _this = this;
+                this.db.url = this.dbPre + this.db.url + this.dbApe;
+                axios.post("/connect",this.db).then(res=>{
+                    _this.msg = res.data.msg;
+                    _this.db = {
+                        username:"root",
+                        password:"root",
+                        url:"localhost:3306/vmall"
+                    }
+                    _this.connectBtnEnabled = false;
+                }).catch(err=>{
+                    _this.db = {
+                        username:"root",
+                        password:"root",
+                        url:"localhost:3306/vmall"
+                    }
+                    _this.msg  =res.data.msg;
+                    console.log(err);
+                })
+            },
+        }
+    })
+</script>
+</html>
